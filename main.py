@@ -60,6 +60,16 @@ OWNER_ID = 1368753935 # Replace with the actual owner's user ID
 SUDO_USERS = [7062964338,6305120550]
 
 AUTH_CHANNEL = -1002752608747
+# ==== Group & Topic Forwarding Support (merged from main2.txt) ====
+TARGET_GROUP_ID = None
+TARGET_TOPIC_ID = None
+
+def target_chat(m):
+    """Return kwargs for sending message to group/topic if configured; else to source chat."""
+    if TARGET_GROUP_ID and TARGET_TOPIC_ID:
+        return {"chat_id": TARGET_GROUP_ID, "message_thread_id": TARGET_TOPIC_ID}
+    return {"chat_id": m.chat.id}
+
 
 # Function to check if a user is authorized
 def is_authorized(user_id: int) -> bool:
@@ -70,6 +80,34 @@ bot = Client(
     api_id=API_ID,
     api_hash=API_HASH,
     bot_token=BOT_TOKEN)
+
+
+
+@bot.on_message(filters.command("set"))
+async def set_group_and_topic(client: Client, message: Message):
+    global TARGET_GROUP_ID, TARGET_TOPIC_ID
+    if not message.from_user:
+        return
+    if not is_authorized(message.from_user.id):
+        await message.reply_text("🚫 You are not authorized to set group and topic IDs.")
+        return
+    if not message.text:
+        await message.reply_text("Usage: /set groupid/topicid")
+        return
+    try:
+        args = message.text.split(" ", 1)
+        if len(args) < 2:
+            await message.reply_text("Usage: /set groupid/topicid")
+            return
+        ids = args[1].strip().split("/")
+        if len(ids) != 2:
+            await message.reply_text("Please provide both IDs separated by '/'.")
+            return
+        TARGET_GROUP_ID = int(ids[0])
+        TARGET_TOPIC_ID = int(ids[1])
+        await message.reply_text(f"✅ Group ID set to: {TARGET_GROUP_ID}\n✅ Topic ID set to: {TARGET_TOPIC_ID}")
+    except Exception as e:
+        await message.reply_text(f"Error: {str(e)}")
 
 # Sudo command to add/remove sudo users
 @bot.on_message(filters.command("sudo"))
@@ -155,7 +193,7 @@ caption = (
 # Start command handler
 @bot.on_message(filters.command(["start"]))
 async def start_command(bot: Client, message: Message):
-    await bot.send_photo(chat_id=message.chat.id, photo=random_image_url, caption=caption, reply_markup=keyboard)
+    await bot.send_photo(**target_chat(message),  photo=random_image_url, caption=caption, reply_markup=keyboard)
     
 # Stop command handler
 @bot.on_message(filters.command("stop"))
@@ -692,7 +730,7 @@ async def upload(bot: Client, m: Message):
                 if "drive" in url:
                     try:
                         ka = await helper.download(url, name)
-                        copy = await bot.send_document(chat_id=m.chat.id,document=ka, caption=cc1)
+                        copy = await bot.send_document(**target_chat(m), document=ka, caption=cc1)
                         count+=1
                         os.remove(ka)
                         time.sleep(1)
@@ -721,7 +759,7 @@ async def upload(bot: Client, m: Message):
 
             # Send the PDF document
                             await asyncio.sleep(4)
-                            copy = await bot.send_document(chat_id=m.chat.id, document=f'{name}.pdf', caption=cc1)
+                            copy = await bot.send_document(**target_chat(m),  document=f'{name}.pdf', caption=cc1)
                             count += 1
 
             # Remove the PDF file after sending
@@ -736,7 +774,7 @@ async def upload(bot: Client, m: Message):
                         
                 #elif "muftukmall" in url:
                     #try:
-                        #await bot.send_photo(chat_id=m.chat.id, photo=pwimg, caption=cpw)
+                        #await bot.send_photo(**target_chat(m),  photo=pwimg, caption=cpw)
                         #count +=1
                     #except Exception as e:
                         #await m.reply_text(str(e))    
@@ -745,7 +783,7 @@ async def upload(bot: Client, m: Message):
                 
                 #elif "youtu" in url:
                     #try:
-                        #await bot.send_photo(chat_id=m.chat.id, photo=ytimg, caption=cyt)
+                        #await bot.send_photo(**target_chat(m),  photo=ytimg, caption=cyt)
                         #count +=1
                     #except Exception as e:
                         #await m.reply_text(str(e))    
@@ -754,7 +792,7 @@ async def upload(bot: Client, m: Message):
 
                 elif "media-cdn.classplusapp.com/drm/" in url:
                     try:
-                        await bot.send_photo(chat_id=m.chat.id, photo=cpimg, caption=cpvod)
+                        await bot.send_photo(**target_chat(m),  photo=cpimg, caption=cpvod)
                         count +=1
                     except Exception as e:
                         await m.reply_text(str(e))    
@@ -782,7 +820,7 @@ async def upload(bot: Client, m: Message):
 
                             # Send the image document
                             await asyncio.sleep(2)  # Non-blocking sleep
-                            copy = await bot.send_photo(chat_id=m.chat.id, photo=f'{name}.jpg', caption=cimg)
+                            copy = await bot.send_photo(**target_chat(m),  photo=f'{name}.jpg', caption=cimg)
                             count += 1
 
                             # Remove the image file after sending
@@ -805,7 +843,7 @@ async def upload(bot: Client, m: Message):
                         cmd = f'yt-dlp -o "{name}.zip" "{url}"'
                         download_cmd = f"{cmd} -R 25 --fragment-retries 25"
                         os.system(download_cmd)
-                        copy = await bot.send_document(chat_id=m.chat.id, document=f'{name}.zip', caption=cczip)
+                        copy = await bot.send_document(**target_chat(m),  document=f'{name}.zip', caption=cczip)
                         count += 1
                         os.remove(f'{name}.zip')
                     except FloodWait as e:
@@ -819,7 +857,7 @@ async def upload(bot: Client, m: Message):
                         cmd = f'yt-dlp -o "{name}.pdf" "{url}"'
                         download_cmd = f"{cmd} -R 25 --fragment-retries 25"
                         os.system(download_cmd)
-                        copy = await bot.send_document(chat_id=m.chat.id, document=f'{name}.pdf', caption=cc1)
+                        copy = await bot.send_document(**target_chat(m),  document=f'{name}.pdf', caption=cc1)
                         count += 1
                         os.remove(f'{name}.pdf')
                     except FloodWait as e:
